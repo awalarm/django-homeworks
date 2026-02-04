@@ -2,6 +2,7 @@ import csv
 
 from django.core.management.base import BaseCommand
 from phones.models import Phone
+from datetime import datetime
 
 
 class Command(BaseCommand):
@@ -9,9 +10,28 @@ class Command(BaseCommand):
         pass
 
     def handle(self, *args, **options):
-        with open('phones.csv', 'r') as file:
-            phones = list(csv.DictReader(file, delimiter=';'))
+        with open('phones.csv', 'r', encoding="utf-8") as file:
+            reader = csv.DictReader(file, delimiter=';')
 
-        for phone in phones:
-            # TODO: Добавьте сохранение модели
-            pass
+            for row in reader:
+                try:
+                    lte_exists = row['lte_exists'].lower() == 'true'
+
+                    release_date = datetime.strptime(row['release_date'], '%Y-%m-%d').date()
+
+                    phone = Phone(
+                        name=row['name'],
+                        price=float(row['price']),
+                        image=row['image'],
+                        release_date=release_date,
+                        lte_exists=lte_exists,
+                        slug=row['name'].lower().replace(' ', '-')
+                    )
+
+                    phone.save()
+                    self.stderr.write(self.style.SUCCESS(f"Успешно сохранен {phone.name}"))
+
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"Ошибка сохранения {row.get("name", "неизвестно")}: {e}"))
+
+        self.stdout.write(self.style.SUCCESS("Импорт завершен"))
